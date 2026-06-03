@@ -1,0 +1,96 @@
+{
+  "name": "free-group-tex-packer-next",
+  "displayName": "Free group texture packer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Free group texture packer - sprite sheets for games and sites",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "dev:electron": "concurrently -k \"vite --mode electron\" \"cross-env NODE_ENV=development electron -r tsx electron/main.ts\"",
+    "build:electron": "tsc -b && vite build --mode electron && tsc -p electron/tsconfig.prod.json && electron-builder",
+    "build:electron:dir": "tsc -b && vite build --mode electron && tsc -p electron/tsconfig.prod.json && electron-builder --dir",
+    "electron": "cross-env NODE_ENV=development electron -r tsx electron/main.ts"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.6.1",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
+    "antd": "^5.24.6",
+    "file-saver": "^2.0.5",
+    "i18next": "^26.3.0",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "i18next-http-backend": "^4.0.0",
+    "jszip": "^3.10.1",
+    "lodash": "^4.18.1",
+    "maxrects-packer": "^2.7.3",
+    "mustache": "^4.2.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-i18next": "^17.0.8",
+    "tinify": "^1.8.1",
+    "zustand": "^5.0.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
+  },
+  "main": "dist-electron/main.js",
+  "build": {
+    "appId": "com.freetexpacker.app",
+    "productName": "Free Group Texture Packer",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "electron/preload.cjs",
+      "public/favicon.svg",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/file-saver": "^2.0.7",
+    "@types/lodash": "^4.17.24",
+    "@types/mustache": "^4.2.6",
+    "@types/node": "^24.12.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^35.1.2",
+    "electron-builder": "^26.8.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.22.3",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.0.12"
+  }
+}
