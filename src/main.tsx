@@ -2,7 +2,6 @@
  * 应用入口
  * React 19 + Vite + Ant Design 启动配置
  */
-import '@ant-design/v5-patch-for-react-19'
 import React, { StrictMode, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

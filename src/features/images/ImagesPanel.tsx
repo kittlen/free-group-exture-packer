@@ -529,7 +529,7 @@ export function ImagesPanel() {
     <div
       className="flex-1 flex flex-col p-4"
     >
-      <Space direction="vertical" className="w-full" size={6}>
+      <Space orientation="vertical" className="w-full" size={6}>
         {/* 组选择器 */}
         <Space size={4} className="w-full">
           <Select
@@ -662,7 +662,7 @@ export function ImagesPanel() {
           <Text
             type="secondary" className="block text-center p-6"
             style={{ border: dragOver ? '2px dashed #1677ff' : "2px dashed #b0c2db" }}>
-            {dragOver ? '释放文件以导入' : i18n.t('EMPTY_DRAG_HERE')}
+            {dragOver ? i18n.t('RELEASE_TO_IMPORT') : i18n.t('EMPTY_DRAG_HERE')}
           </Text>
         </div>
         <div className="select-none" ref={scrollWrapRef}>

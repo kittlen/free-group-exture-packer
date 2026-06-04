@@ -32,7 +32,7 @@ interface ElectronAPI {
   getRecentProjects: () => Promise<string[]>
   onMenuAction: (callback: (action: string, data?: unknown) => void) => void
   tinify?: (data: { imageData: string; key: string }) => Promise<{ success: boolean; data: string; error?: string }>
-  saveExport?: (data: { savePath: string; files: { name: string; content: string; base64?: boolean }[]; zipName: string }) => Promise<{ success: boolean; filePath?: string; error?: string }>
+  saveExport?: (data: { savePath: string; files: { name: string; content: string; base64?: boolean }[]; zipName: string; zip?: boolean }) => Promise<{ success: boolean; filePath?: string; error?: string }>
   loadFolder: (folderPath: string) => Promise<ImageFileItem[]>,
   getImageBase64: (filePath: string) => Promise<ImageBase64Result>,
   changeLanguage: (lang: Language) => void;
@@ -119,11 +119,12 @@ export class ElectronPlatform implements PlatformAdapter {
 
   /** 下载文件（单文件或 ZIP），如配置了 savePath 则直接保存到本地 */
   async download(files: { name: string; content: string; base64?: boolean }[], zipName: string): Promise<boolean> {
-    const savePath = usePackStore.getState().packOptions.savePath
+    const exportOptions = usePackStore.getState().exportOptions
+    const savePath = exportOptions.savePath
     if (savePath) {
       const api = getAPI()
       if (api?.saveExport) {
-        const result = await api.saveExport({ savePath, files, zipName })
+        const result = await api.saveExport({ savePath, files, zipName, zip: exportOptions.exportAsZip })
         if (result.success) {
           return true;
         }

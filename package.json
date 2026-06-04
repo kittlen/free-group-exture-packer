@@ -17,9 +17,8 @@
     "electron": "cross-env NODE_ENV=development electron -r tsx electron/main.ts"
   },
   "dependencies": {
-    "@ant-design/icons": "^5.6.1",
-    "@ant-design/v5-patch-for-react-19": "^1.0.3",
-    "antd": "^5.24.6",
+    "@ant-design/icons": "^6.2.5",
+    "antd": "^6.4.3",
     "file-saver": "^2.0.5",
     "i18next": "^26.3.0",
     "i18next-browser-languagedetector": "^8.2.1",
@@ -36,7 +35,9 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "electron"
+      "electron",
+      "electron-winstaller",
+      "esbuild"
     ]
   },
   "main": "dist-electron/main.js",

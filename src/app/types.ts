@@ -68,8 +68,9 @@ export interface SpriteRect {
   identical?: SpriteRect
 }
 
-/** 打包参数选项 */
-export interface PackOptions {
+export interface ExportOptions {
+  /** 下载的文件名-压缩包名（不含扩展名） */
+  fileName: string
   /** 纹理输出名称 */
   textureName: string
   /** 纹理格式 png/jpg */
@@ -78,22 +79,26 @@ export interface PackOptions {
   removeFileExtension: boolean
   /** 是否保留文件夹前缀 */
   prependFolderName: boolean
-  /** 输出缩放比例 */
-  scale: number
-  /** 使用的图片滤镜类型 */
-  filter: string
   /** 导出的数据格式类型 */
   exporter: string
   /** 是否输出 Base64 编码 */
   base64Export: boolean
+  /** 保存路径（Electron 专用） */
+  savePath: string
   /** 是否启用 TinyPNG 压缩 */
   tinify: boolean
   /** TinyPNG API Key */
   tinifyKey: string
-  /** 下载的文件名（不含扩展名） */
-  fileName: string
-  /** 保存路径（Electron 专用） */
-  savePath: string
+  /** 是否导出为压缩包 */
+  exportAsZip: boolean
+}
+
+/** 打包参数选项 */
+export interface PackOptions {
+  /** 输出缩放比例 */
+  scale: number
+  /** 使用的图片滤镜类型 */
+  filter: string
   /** 图集最大宽度 */
   width: number
   /** 图集最大高度 */

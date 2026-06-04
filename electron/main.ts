@@ -105,6 +105,7 @@ function stopFileWatcher(): void {
 type Language = 'zh-cn' | 'en'
 /** 菜单项的国际化 key */
 type MenuKey = 'file' | 'newProject' | 'openProject' | 'openRecent' | 'saveProject' | 'saveAs' | 'exit'
+  | 'cancel' | 'confirmQuit' | 'quitTitle' | 'quitDetail'
 
 /** 根据系统区域判断是否使用中文 */
 function canUseChinese() {
@@ -133,35 +134,44 @@ const PROJECT_FILTERS_EN = [{ name: "Texture Packaging Project", extensions: ['g
 /** 中文版文件过滤器 */
 const PROJECT_FILTERS_CN = [{ name: "纹理打包项目", extensions: ['gftpp'] }]
 
+/** 多语言文本表 */
+const translations: Record<Language, Record<MenuKey, string>> = {
+  'zh-cn': {
+    file: '文件',
+    newProject: '新建项目',
+    openProject: '打开项目',
+    openRecent: '打开最近',
+    saveProject: '保存项目',
+    saveAs: '另存为',
+    exit: '退出',
+    cancel: '取消',
+    confirmQuit: '确认退出',
+    quitTitle: '确认退出应用',
+    quitDetail: '未保存的更改将会丢失',
+  },
+  en: {
+    file: 'File',
+    newProject: 'New Project',
+    openProject: 'Open Project',
+    openRecent: 'Open Recent',
+    saveProject: 'Save Project',
+    saveAs: 'Save As',
+    exit: 'Quit',
+    cancel: 'Cancel',
+    confirmQuit: 'Confirm Exit',
+    quitTitle: 'Confirm Exit',
+    quitDetail: 'Unsaved changes will be lost',
+  },
+}
+
+/** 根据当前语言取文本 */
+function t(key: MenuKey) {
+  return translations[currentLang][key]
+}
+
 /** 构建原生菜单栏（文件 → 新建/打开/保存/另存为/退出） */
 function buildMenu(): void {
   const isMac = process.platform === 'darwin'
-
-  const translations: Record<Language, Record<MenuKey, string>> = {
-    'zh-cn': {
-      file: '文件',
-      newProject: '新建项目',
-      openProject: '打开项目',
-      openRecent: '打开最近',
-      saveProject: '保存项目',
-      saveAs: '另存为',
-      exit: '退出',
-    },
-    en: {
-      file: 'File',
-      newProject: 'New Project',
-      openProject: 'Open Project',
-      openRecent: 'Open Recent',
-      saveProject: 'Save Project',
-      saveAs: 'Save As',
-      exit: 'Quit',
-    },
-  }
-
-  /** 根据当前语言取菜单文本 */
-  const t = (key: MenuKey) => {
-    return translations[currentLang][key]
-  }
 
   const template: MenuItemConstructorOptions[] = [
     {
@@ -268,6 +278,7 @@ async function handleSaveProject(filePath: string | null, projectData: SaveProje
   }
 }
 
+let isQuitting = false; // 全局标记
 // === 窗口创建 ===
 function createWindow(): void {
   const state = loadWindowState()
@@ -325,6 +336,43 @@ function createWindow(): void {
   mainWindow.on('closed', stopFileWatcher)
   initLang();
   buildMenu()
+  initExit();
+
+}
+
+function showCloseMsg() {
+  return dialog.showMessageBoxSync({
+    type: 'question',
+    buttons: [t('cancel'), t('confirmQuit')],
+    title: t('quitTitle'),
+    detail: t('quitDetail'),
+    message: t('quitTitle'),
+  });
+}
+
+function initExit() {
+  // 监听窗口关闭（右上角 ×）
+  mainWindow?.on('close', (e) => {
+    if (isQuitting) return; // 正在退出 → 不拦截
+    e.preventDefault(); // 阻止关闭
+    const res = showCloseMsg();
+
+    if (res === 1) {
+      isQuitting = true;
+      mainWindow?.destroy(); // 真正退出
+    }
+  });
+
+  // 监听系统退出（Cmd+Q / 右键退出）
+  app.on('before-quit', (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    const res = showCloseMsg();
+    if (res === 1) {
+      isQuitting = true;
+      app.exit(); // 确认退出
+    }
+  });
 }
 
 app.whenReady().then(createWindow)
@@ -480,26 +528,39 @@ interface ExportData {
   savePath: string              /** 保存目录 */
   files: ExportFile[]            /** 待保存的文件列表 */
   zipName: string                /** ZIP 压缩包名称 */
+  zip?: boolean                  /** 是否打包为 zip，默认 true */
 }
 
 /** 导出文件保存到指定路径 */
 ipcMain.handle('export:save', async (_event, data: ExportData) => {
-  const { savePath, files, zipName } = data
+  const { savePath, files, zipName, zip = true } = data
   if (!savePath || !files?.length) return { success: false as const, error: '无效的保存路径' }
 
   try {
+    if (!zip) {
+      for (const file of files) {
+        const outPath = path.join(savePath, file.name)
+        if (file.base64) {
+          fs.writeFileSync(outPath, Buffer.from(file.content, 'base64'))
+        } else {
+          fs.writeFileSync(outPath, file.content, 'utf-8')
+        }
+      }
+      return { success: true as const, filePath: savePath }
+    }
+
     const { default: JSZip } = await import('jszip')
-    const zip = new JSZip()
+    const jszip = new JSZip()
 
     for (const file of files) {
       if (file.base64) {
-        zip.file(file.name, file.content, { base64: true })
+        jszip.file(file.name, file.content, { base64: true })
       } else {
-        zip.file(file.name, file.content)
+        jszip.file(file.name, file.content)
       }
     }
 
-    const buf = await zip.generateAsync({ type: 'nodebuffer' })
+    const buf = await jszip.generateAsync({ type: 'nodebuffer' })
     const outPath = path.join(savePath, `${zipName || 'export'}.zip`)
     fs.writeFileSync(outPath, buf)
     return { success: true as const, filePath: outPath }

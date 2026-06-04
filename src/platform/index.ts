@@ -3,7 +3,7 @@
  * Web 和 Electron 模式通过 setPlatform 注入不同的实现
  */
 
-import type { BaseRawImage, PackOptions } from "@/app/types"
+import type { BaseRawImage, ExportOptions, PackOptions } from "@/app/types"
 import type { Language } from "@/components/MainHeader"
 
 /** 图片数据（平台无关的中间格式） */
@@ -20,6 +20,7 @@ export interface ProjectData {
   version: string
   app: string
   packOptions: PackOptions
+  exportOptions: ExportOptions
   groupImages: Record<string, string[]>,
   groups: string[],
   images: Record<string, BaseRawImage>,

@@ -2,7 +2,7 @@
  * 打包工具函数
  * 图集渲染、多组拼接合并
  */
-import type { PackOptions, PackResultItem, SpriteRect } from "@/app/types";
+import type { ExportOptions, PackOptions, PackResultItem, SpriteRect } from "@/app/types";
 import { getFilterByType } from "@/features/filters"
 
 
@@ -102,13 +102,14 @@ export function renderPackedTexture(
     width: number,
     height: number,
     options: PackOptions,
+    exportOptions: ExportOptions
 ): string {
     const canvas = document.createElement("canvas")
     canvas.width = width
     canvas.height = height
     const ctx = canvas.getContext("2d")!
 
-    if (options.textureFormat === "jpg") {
+    if (exportOptions.textureFormat === "jpg") {
         ctx.fillStyle = "#ffffff"
         ctx.fillRect(0, 0, width, height)
     }
@@ -147,5 +148,5 @@ export function renderPackedTexture(
         ctx.putImageData(filtered, 0, 0)
     }
 
-    return canvas.toDataURL(options.textureFormat === "png" ? "image/png" : "image/jpeg")
+    return canvas.toDataURL(exportOptions.textureFormat === "png" ? "image/png" : "image/jpeg")
 }

@@ -1,8 +1,9 @@
 import { create } from 'zustand'
-import type { RawImage, PackOptions, PackResultItem } from './types'
+import type { RawImage, PackOptions, PackResultItem, ExportOptions } from './types'
 import { Storage } from '@/utils/Storage'
 import { subscribeWithSelector } from 'zustand/middleware'
-const STORAGE_PACK_OPTIONS_KEY = 'pack-options'
+export const STORAGE_PACK_OPTIONS_KEY = 'pack-options'
+export const STORAGE_EXPORT_OPTIONS_KEY = 'export-options'
 
 /**
  * 全局状态 store 接口
@@ -21,6 +22,8 @@ export interface PackStore {
   activeGroup: string
   /** 打包参数配置 */
   packOptions: PackOptions
+  /**导出参数 */
+  exportOptions: ExportOptions
   /** 打包结果 */
   packResult: PackResultItem[] | null
   /** 被选中的图片 key 列表 */
@@ -70,6 +73,8 @@ export interface PackStore {
   moveImageInGroup: (group: string, key: string, direction: 'up' | 'down' | 'top' | 'bottom') => void
   /** 更新打包参数 */
   setPackOptions: (options: Partial<PackOptions>) => void
+  /**更新导出参数 */
+  setExportOptions: (options: Partial<ExportOptions>) => void
   /** 设置打包结果 */
   setPackResult: (result: PackResultItem[] | null) => void
   /** 设置选中的图片列表 */
@@ -90,18 +95,10 @@ export interface PackStore {
 
 /** 默认打包参数 */
 const defaultPackOptions: PackOptions = {
-  textureName: 'texture',
-  textureFormat: 'png',
-  removeFileExtension: false,
-  prependFolderName: true,
+
+
   scale: 1,
   filter: 'Original',
-  exporter: 'JSON (hash)',
-  base64Export: false,
-  tinify: false,
-  tinifyKey: '',
-  fileName: 'pack-result',
-  savePath: '',
   width: 2048,
   height: 2048,
   fixedSize: false,
@@ -119,6 +116,20 @@ const defaultPackOptions: PackOptions = {
   mergeDirection: 'vertical',
 }
 
+const defaultExportOptions: ExportOptions = {
+  textureName: 'texture',
+  textureFormat: 'png',
+  removeFileExtension: false,
+  prependFolderName: true,
+  exporter: 'JSON (hash)',
+  base64Export: false,
+  fileName: 'pack-result',
+  savePath: '',
+  tinify: false,
+  tinifyKey: '',
+  exportAsZip: false,
+}
+
 /**
  * zustand store：全局状态管理
  * 使用 subscribeWithSelector 中间件允许外部监听特定状态变化
@@ -130,6 +141,7 @@ export const usePackStore = create<PackStore>()(subscribeWithSelector((set) => (
   groupImages: { default: [] },
   activeGroup: 'default',
   packOptions: { ...defaultPackOptions },
+  exportOptions: { ...defaultExportOptions },
   packResult: null,
   selectedImages: [],
   nowShowSelectedImages: null,
@@ -194,14 +206,21 @@ export const usePackStore = create<PackStore>()(subscribeWithSelector((set) => (
     }),
 
   /** 创建新分组（不允许重名） */
-  createGroup: (name) =>
+  createGroup: (name) => {
     set((state) => {
+      const canUpdateTextureName = (state.groups.length == 0 || (state.groups.length == 1 && state.groups[0] === "default"))
+      ///如果没有任何分组
       if (state.groups.includes(name)) return state
-      return {
+      const result: Partial<PackStore> = {
         groups: [...state.groups, name],
         groupImages: { ...state.groupImages, [name]: [] },
       }
-    }),
+      if (canUpdateTextureName) {
+        result.exportOptions = { ...state.exportOptions, textureName: name };
+      }
+      return result;
+    })
+  },
 
   /** 删除分组（仅允许空分组，default 分组特殊处理） */
   deleteGroup: (name) =>
@@ -329,6 +348,13 @@ export const usePackStore = create<PackStore>()(subscribeWithSelector((set) => (
       const next = { ...state.packOptions, ...options }
       Storage.save(STORAGE_PACK_OPTIONS_KEY, next)
       return { packOptions: next }
+    }),
+  /**更新导出参数 */
+  setExportOptions: (options) =>
+    set((state) => {
+      const next = { ...state.exportOptions, ...options }
+      Storage.save(STORAGE_EXPORT_OPTIONS_KEY, next)
+      return { exportOptions: next }
     }),
 
   /** 加载全量分组数据（异步加载所有图片的 HTMLImageElement） */

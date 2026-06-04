@@ -69,7 +69,7 @@ export function About({ open, onClose }: AboutProps) {
           <Link href={appInfo.bugs.url} target="_blank">{appInfo.bugs.url}</Link>
         </Descriptions.Item>
         <Descriptions.Item label={t('ABOUT_LIBS')}>
-          <Space direction="vertical" size={2}>
+          <Space orientation="vertical" size={2}>
             {libs.map((lib) => (
               <Link key={lib.name} href={lib.url} target="_blank">{lib.name}</Link>
             ))}

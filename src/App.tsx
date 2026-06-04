@@ -4,10 +4,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { App as AntApp, ConfigProvider, Layout, theme, Button, Spin, Typography, Select, Switch } from "antd"
+import { App as AntApp, ConfigProvider, Layout, theme, Button, Spin, Typography, Select, Switch, Input } from "antd"
 import { ThunderboltOutlined, DownloadOutlined } from "@ant-design/icons"
 import { useTranslation } from 'react-i18next'
-import { usePackStore } from "@/app/store"
+import { STORAGE_EXPORT_OPTIONS_KEY, STORAGE_PACK_OPTIONS_KEY, usePackStore } from "@/app/store"
 import { MainHeader } from "@/components/MainHeader"
 import { MessageBox } from "@/components/MessageBox"
 import { ProcessingShader } from "@/components/ProcessingShader"
@@ -25,7 +25,7 @@ import { ElectronPlatform } from "@/platform/electron"
 import { Storage } from "@/utils/Storage"
 import { antdLocaleMap } from "@/app/locale"
 import "@/app/i18n"
-import type { PackOptions } from "@/app/types"
+import type { ExportOptions, PackOptions } from "@/app/types"
 import type { PackResultItem } from "@/app/types"
 import { toBaseRawImage } from "./utils/storeStateUtil"
 import LoadingView from "./components/Loading"
@@ -34,9 +34,8 @@ import { renderPackedTexture, stitchAtlases } from "./utils/packUtil"
 const { Content, Sider } = Layout
 const { Text } = Typography
 
-const STORAGE_PACK_OPTIONS_KEY = "pack-options"
-
 setPlatform(window.electronAPI ? new ElectronPlatform() : new WebPlatform())
+const isElectron = !!window.electronAPI
 
 function App() {
   const { message } = AntApp.useApp();
@@ -46,6 +45,8 @@ function App() {
   const packResult = usePackStore((s) => s.packResult)
   const groups = usePackStore((s) => s.groups)
   const setPackOptions = usePackStore((s) => s.setPackOptions)
+  const setExportOptions = usePackStore((s) => s.setExportOptions)
+  const exportOptions = usePackStore((s) => s.exportOptions)
   const setPackResult = usePackStore((s) => s.setPackResult)
   const clearImages = usePackStore((s) => s.clearImages)
   const setShowShader = usePackStore((s) => s.setShowShader)
@@ -57,11 +58,15 @@ function App() {
 
   // 加载保存的打包参数
   useEffect(() => {
-    const saved = Storage.load(STORAGE_PACK_OPTIONS_KEY) as Partial<PackOptions> | null
-    if (saved) {
-      setPackOptions(saved)
+    const savedPackOptions = Storage.load(STORAGE_PACK_OPTIONS_KEY) as Partial<PackOptions> | null
+    if (savedPackOptions) {
+      setPackOptions(savedPackOptions)
     }
-  }, [setPackOptions])
+    const savedExportOptions = Storage.load(STORAGE_EXPORT_OPTIONS_KEY) as Partial<ExportOptions> | null
+    if (savedExportOptions) {
+      setExportOptions(savedExportOptions)
+    }
+  }, [setPackOptions, setExportOptions])
 
   // 暗色模式同步到 <html> 标签
   useEffect(() => {
@@ -74,6 +79,7 @@ function App() {
       version: '1.0',
       app: t('APP_NAME'),
       packOptions: storeState.packOptions,
+      exportOptions: storeState.exportOptions,
       groupImages: storeState.groupImages,
       groups: storeState.groups,
       images: toBaseRawImage(storeState.images),
@@ -133,6 +139,9 @@ function App() {
     if (data?.project?.packOptions) {
       setPackOptions(data.project.packOptions as Partial<PackOptions>)
     }
+    if (data?.project?.exportOptions) {
+      setExportOptions(data.project.exportOptions as Partial<ExportOptions>)
+    }
     if (data?.project?.groups && data?.project?.groupImages) {
       await usePackStore.getState().loadGroupData(data.project.groups, data.project.groupImages, data.project.images)
     }
@@ -140,7 +149,7 @@ function App() {
     setCanLoading(false);
     message.success('项目已加载')
 
-  }, [setPackOptions, setCurrentProject, message])
+  }, [setPackOptions, setExportOptions, setCurrentProject, message])
 
   const doPack = useCallback((showMessage = true) => {
     const state = usePackStore.getState()
@@ -150,7 +159,7 @@ function App() {
       setMessageBox({ content: t('NO_IMAGES_ERROR') })
       return
     }
-
+    const exportOptions = state.exportOptions
     setShowShader(true)
     setTimeout(async () => {
       try {
@@ -161,7 +170,7 @@ function App() {
           if (!groupKeys.length) continue
           const sheets = PackProcessor.pack(images, packOptions, groupKeys)
           const items: PackResultItem[] = sheets.map((sheet) => {
-            const imageData = renderPackedTexture('', sheet.rects, sheet.width, sheet.height, packOptions)
+            const imageData = renderPackedTexture('', sheet.rects, sheet.width, sheet.height, packOptions, exportOptions)
             return { group, data: sheet.rects, imageData, width: sheet.width, height: sheet.height }
           })
           groupResults.push({ group, items })
@@ -170,7 +179,7 @@ function App() {
         // 2. 合并或平铺
         let results: PackResultItem[]
         if (packOptions.mergeAtlases && groupResults.length > 1) {
-          results = await stitchAtlases(groupResults, packOptions.mergeDirection, packOptions.textureFormat)
+          results = await stitchAtlases(groupResults, packOptions.mergeDirection, exportOptions.textureFormat)
         } else {
           results = groupResults.flatMap((r) => r.items)
         }
@@ -217,29 +226,49 @@ function App() {
     groupsOrderStrRef.current = str
   }, [groups, doPack, images])
 
+  const selectSavePath = async (): Promise<string | null> => {
+    const path = await getPlatform().selectFolder()
+    if (path) {
+      setExportOptions({ savePath: path })
+    }
+    return path;
+  }
+
   // === 导出 ===
   const doExport = async () => {
     if (!packResult?.length) {
       setMessageBox({ content: t('PACK_FIRST') })
       return
     }
-
+    if (window.electronAPI) {
+      const path = await selectSavePath();
+      if (!path) {
+        return;
+      }
+    }
+    const exportOptions = usePackStore.getState().exportOptions
+    const pagkOptions = usePackStore.getState().packOptions
     const platform = getPlatform()
     const files: { name: string; content: string; base64?: boolean }[] = []
 
     for (let i = 0; i < packResult.length; i++) {
       const item = packResult[i]
-      const groupSuffix = item.group && item.group !== 'default' ? `-${item.group}` : ''
-      const fName = packOptions.textureName + groupSuffix + (packResult.length > 1 ? `-${i}` : '')
-      const imageFile = `${fName}.${packOptions.textureFormat}`
+      let fName: string;
+      if (pagkOptions.mergeAtlases) {
+        fName = exportOptions.textureName ?? "merged";
+      } else {
+        const groupSuffix = item.group && item.group !== 'default' ? `-${item.group}` : ''
+        fName = exportOptions.textureName + groupSuffix + (packResult.length > 1 ? `-${i}` : '')
+      }
+      const imageFile = `${fName}.${exportOptions.textureFormat}`
 
       let imageContent = item.imageData.split(',')[1]
 
       // TinyPNG 压缩
-      if (packOptions.tinify && packOptions.tinifyKey) {
+      if (exportOptions.tinify && exportOptions.tinifyKey) {
         try {
-          imageContent = await TinyPngCompressor.compress(imageContent, packOptions.tinifyKey, {
-            textureFormat: packOptions.textureFormat,
+          imageContent = await TinyPngCompressor.compress(imageContent, exportOptions.tinifyKey, {
+            textureFormat: exportOptions.textureFormat,
           })
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e)
@@ -248,7 +277,7 @@ function App() {
       }
 
       // base64Export 决定图片输出方式
-      if (packOptions.base64Export) {
+      if (exportOptions.base64Export) {
         files.push({
           name: `${imageFile}.txt`,
           content: imageContent,
@@ -263,7 +292,7 @@ function App() {
       }
 
       // 数据文件
-      const metaContent = exportData(item.data, packOptions.exporter, {
+      const metaContent = exportData(item.data, exportOptions.exporter, {
         imageName: fName,
         imageFile,
         imageWidth: item.width,
@@ -271,14 +300,14 @@ function App() {
         scale: packOptions.scale,
       })
 
-      const exporterDef = exporters.find((e) => e.type === packOptions.exporter)
+      const exporterDef = exporters.find((e) => e.type === exportOptions.exporter)
       files.push({
         name: `${fName}.${exporterDef?.fileExt || 'json'}`,
         content: metaContent,
       })
     }
 
-    const downloadResult = await platform.download(files, packOptions.fileName)
+    const downloadResult = await platform.download(files, exportOptions.fileName)
     if (downloadResult) {
       message.success(t('EXPORT_COMPLETE'))
     }
@@ -369,6 +398,15 @@ function App() {
                 >
                   {t('EXPORT')}
                 </Button>
+                {isElectron && (
+                  <>
+                    <label className="flex items-center gap-2">
+                      {t('EXPORT_AS_ZIP')}
+                      <Switch size="small"
+                        checked={packOptions.mergeAtlases ? exportOptions.exportAsZip : true} disabled={!packOptions.mergeAtlases} onChange={(v) => setExportOptions({ exportAsZip: v })} />
+                    </label>
+                  </>
+                )}
               </div>
 
               {groups.length > 1 && (
@@ -382,18 +420,29 @@ function App() {
                     {t('MERGE_ATLASES')}
                   </label>
                   {packOptions.mergeAtlases && (
-                    <label className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                      {t('MERGE_DIRECTION')}
-                      <Select
-                        size="small"
-                        value={packOptions.mergeDirection}
-                        onChange={(v) => setPackOptions({ mergeDirection: v as 'vertical' | 'horizontal' })}
-                        options={[
-                          { value: 'horizontal', label: t('MERGE_DIRECTION_VERTICAL') },
-                          { value: 'vertical', label: t('MERGE_DIRECTION_HORIZONTAL') },
-                        ]}
-                      />
-                    </label>
+                    <>
+
+                      <label className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        <span className="whitespace-nowrap">{t('MERGE_DIRECTION')}</span>
+                        <Select
+                          size="small"
+                          value={packOptions.mergeDirection}
+                          onChange={(v) => setPackOptions({ mergeDirection: v as 'vertical' | 'horizontal' })}
+                          options={[
+                            { value: 'horizontal', label: t('MERGE_DIRECTION_VERTICAL') },
+                            { value: 'vertical', label: t('MERGE_DIRECTION_HORIZONTAL') },
+                          ]}
+                        />
+                      </label>
+                      {!exportOptions.exportAsZip &&
+                        <label className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 ">
+                          <span className="whitespace-nowrap">{t('TEXTURE_NAME')}</span>
+                          <Input size="small"
+                            value={exportOptions.textureName}
+                            onChange={(e) => setExportOptions({ textureName: e.target.value })} />
+                        </label>
+                      }
+                    </>
                   )}
                 </div>
               )}
@@ -416,7 +465,7 @@ function App() {
 
       <ProcessingShader visible={showShader} />
       <MessageBox />
-    </ConfigProvider>
+    </ConfigProvider >
   )
 }
 
