@@ -79,6 +79,8 @@ export interface ExportOptions {
   removeFileExtension: boolean
   /** 是否保留文件夹前缀 */
   prependFolderName: boolean
+  /** 纹理输出名称是否添加时间标签 */
+  textureNameAddTimeTag: boolean,
   /** 导出的数据格式类型 */
   exporter: string
   /** 是否输出 Base64 编码 */

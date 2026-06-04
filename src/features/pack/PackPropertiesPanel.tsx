@@ -6,7 +6,7 @@
 import { useTranslation } from 'react-i18next'
 import { useMemo } from 'react'
 import { Form, InputNumber, Select, Switch, Input, Tabs, Typography } from 'antd'
-import { usePackStore } from '@/app/store'
+import { usePackStore, type OptionAtivakeType } from '@/app/store'
 import { exporters } from '@/features/export/exporters'
 import { packers, getPackerByType } from '@/core/packers'
 
@@ -15,16 +15,16 @@ const { Text } = Typography
 export function PackPropertiesPanel() {
   const { t } = useTranslation()
   const packOptions = usePackStore((s) => s.packOptions)
+  const optionAtiveKey = usePackStore((s) => s.optionAtiveKey)
+  const setOptionAtiveKey = usePackStore((s) => s.setOptionAtiveKey)
   const setPackOptions = usePackStore((s) => s.setPackOptions)
   const exportOptions = usePackStore((s) => s.exportOptions)
   const setExportOptions = usePackStore((s) => s.setExportOptions)
-
   const packerMethods = useMemo(() => {
     const packer = getPackerByType(packOptions.packer)
     if (!packer) return []
     return Object.keys(packer.methods)
   }, [packOptions.packer])
-
   return (
     <div className="flex-1  overflow-auto p-4">
       <Text strong className="text-base mb-4 block">
@@ -32,6 +32,10 @@ export function PackPropertiesPanel() {
       </Text>
       <Form layout="vertical" size="small" style={{ height: "calc(100vh - 150px)" }}>
         <Tabs
+          activeKey={optionAtiveKey}
+          onChange={(key) => {
+            setOptionAtiveKey(key as OptionAtivakeType)
+          }}
           items={[
             {
               key: 'pack',
@@ -135,6 +139,10 @@ export function PackPropertiesPanel() {
 
                   <Form.Item label={t('REMOVE_FILE_EXT')}>
                     <Switch checked={exportOptions.removeFileExtension} onChange={(v) => setExportOptions({ removeFileExtension: v })} />
+                  </Form.Item>
+
+                  <Form.Item label={t('TEXTURE_NAME_ADD_TIME_TAG')}>
+                    <Switch checked={exportOptions.textureNameAddTimeTag} onChange={(v) => setExportOptions({ textureNameAddTimeTag: v })} />
                   </Form.Item>
 
                   <Form.Item label={t('PREPEND_FOLDER')}>

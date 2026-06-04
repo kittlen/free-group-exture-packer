@@ -5,6 +5,8 @@ import { subscribeWithSelector } from 'zustand/middleware'
 export const STORAGE_PACK_OPTIONS_KEY = 'pack-options'
 export const STORAGE_EXPORT_OPTIONS_KEY = 'export-options'
 
+export type OptionAtivakeType = "pack" | "export" | "other"
+
 /**
  * 全局状态 store 接口
  * 使用 zustand 管理所有应用状态
@@ -24,6 +26,7 @@ export interface PackStore {
   packOptions: PackOptions
   /**导出参数 */
   exportOptions: ExportOptions
+  optionAtiveKey: OptionAtivakeType
   /** 打包结果 */
   packResult: PackResultItem[] | null
   /** 被选中的图片 key 列表 */
@@ -75,6 +78,8 @@ export interface PackStore {
   setPackOptions: (options: Partial<PackOptions>) => void
   /**更新导出参数 */
   setExportOptions: (options: Partial<ExportOptions>) => void
+  /**更新当前激活的页面 */
+  setOptionAtiveKey: (optionAtivakeType: OptionAtivakeType) => void
   /** 设置打包结果 */
   setPackResult: (result: PackResultItem[] | null) => void
   /** 设置选中的图片列表 */
@@ -120,6 +125,7 @@ const defaultExportOptions: ExportOptions = {
   textureName: 'texture',
   textureFormat: 'png',
   removeFileExtension: false,
+  textureNameAddTimeTag: false,
   prependFolderName: true,
   exporter: 'JSON (hash)',
   base64Export: false,
@@ -142,6 +148,7 @@ export const usePackStore = create<PackStore>()(subscribeWithSelector((set) => (
   activeGroup: 'default',
   packOptions: { ...defaultPackOptions },
   exportOptions: { ...defaultExportOptions },
+  optionAtiveKey: "pack",
   packResult: null,
   selectedImages: [],
   nowShowSelectedImages: null,
@@ -356,7 +363,11 @@ export const usePackStore = create<PackStore>()(subscribeWithSelector((set) => (
       Storage.save(STORAGE_EXPORT_OPTIONS_KEY, next)
       return { exportOptions: next }
     }),
-
+  setOptionAtiveKey: (optionAtiveKey) => {
+    set((_state) => {
+      return { optionAtiveKey }
+    })
+  },
   /** 加载全量分组数据（异步加载所有图片的 HTMLImageElement） */
   loadGroupData: async (groups: string[], groupImages: Record<string, string[]>, images: Record<string, RawImage>) => {
     const promises = Object.values(images).map(async (value: RawImage) => {

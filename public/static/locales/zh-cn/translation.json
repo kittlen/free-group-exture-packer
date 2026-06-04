@@ -23,6 +23,7 @@
   "SHOW_SPRITES": "动画",
   "SPRITE_NAME": "精灵名称:",
   "ANIMATION_SPEED": "动画速度:",
+  "TEXTURE_NAME_ADD_TIME_TAG": "添加时间标签:",
   "TEXTURE_NAME": "纹理名称",
   "TEXTURE_NAME_TITLE": "纹理导出名称",
   "TEXTURE_FORMAT": "纹理格式:",

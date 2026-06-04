@@ -46,6 +46,7 @@ function App() {
   const groups = usePackStore((s) => s.groups)
   const setPackOptions = usePackStore((s) => s.setPackOptions)
   const setExportOptions = usePackStore((s) => s.setExportOptions)
+  const setOptionAtiveKey = usePackStore((s) => s.setOptionAtiveKey)
   const exportOptions = usePackStore((s) => s.exportOptions)
   const setPackResult = usePackStore((s) => s.setPackResult)
   const clearImages = usePackStore((s) => s.clearImages)
@@ -240,6 +241,7 @@ function App() {
       setMessageBox({ content: t('PACK_FIRST') })
       return
     }
+    setOptionAtiveKey("export")
     if (window.electronAPI) {
       const path = await selectSavePath();
       if (!path) {
@@ -250,7 +252,7 @@ function App() {
     const pagkOptions = usePackStore.getState().packOptions
     const platform = getPlatform()
     const files: { name: string; content: string; base64?: boolean }[] = []
-
+    const nowTimeStr = `_${Date.now()}`;
     for (let i = 0; i < packResult.length; i++) {
       const item = packResult[i]
       let fName: string;
@@ -258,7 +260,11 @@ function App() {
         fName = exportOptions.textureName ?? "merged";
       } else {
         const groupSuffix = item.group && item.group !== 'default' ? `-${item.group}` : ''
-        fName = exportOptions.textureName + groupSuffix + (packResult.length > 1 ? `-${i}` : '')
+        // fName = exportOptions.textureName + groupSuffix + (packResult.length > 1 ? `-${i}` : '')
+        fName = exportOptions.textureName + groupSuffix;
+      }
+      if (exportOptions.textureNameAddTimeTag) {
+        fName += nowTimeStr
       }
       const imageFile = `${fName}.${exportOptions.textureFormat}`
 
@@ -306,12 +312,13 @@ function App() {
         content: metaContent,
       })
     }
-
-    const downloadResult = await platform.download(files, exportOptions.fileName)
+    const zipFileName = exportOptions.textureNameAddTimeTag ? (exportOptions.fileName + nowTimeStr) : exportOptions.fileName
+    const downloadResult = await platform.download(files, zipFileName)
     if (downloadResult) {
       message.success(t('EXPORT_COMPLETE'))
     }
   };
+
 
   // === Electron 菜单命令监听 ===
   useEffect(() => {
@@ -403,7 +410,7 @@ function App() {
                     <label className="flex items-center gap-2">
                       {t('EXPORT_AS_ZIP')}
                       <Switch size="small"
-                        checked={packOptions.mergeAtlases ? exportOptions.exportAsZip : true} disabled={!packOptions.mergeAtlases} onChange={(v) => setExportOptions({ exportAsZip: v })} />
+                        checked={isElectron ? exportOptions.exportAsZip : true} disabled={!isElectron} onChange={(v) => setExportOptions({ exportAsZip: v })} />
                     </label>
                   </>
                 )}

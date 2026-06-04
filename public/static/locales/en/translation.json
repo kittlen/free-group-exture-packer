@@ -23,6 +23,7 @@
   "SHOW_SPRITES": "Animations",
   "SPRITE_NAME": "Sprite name:",
   "ANIMATION_SPEED": "Animation speed:",
+  "TEXTURE_NAME_ADD_TIME_TAG": "Add time tag:",
   "TEXTURE_NAME": "Texture name",
   "TEXTURE_NAME_TITLE": "Texture name for export",
   "TEXTURE_FORMAT": "Texture format:",
